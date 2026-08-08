@@ -1,0 +1,19 @@
+# Paste new value here, then re-run the agent
+DELTA_API_KEY=
+# Paste new value here, then re-run the agent
+DELTA_API_SECRET=
+BASE_URL=https://cdn-ind.testnet.deltaex.org
+# Paste new value here, then re-run the agent
+OLLAMA_API_KEY=
+OLLAMA_MODEL=minimax-m3:cloud
+OLLAMA_HOST=https://ollama.com
+
+TESTNET_ONLY=true
+MAX_DAILY_TRADES=5
+MAX_RISK_PCT=0.01
+MIN_CONFIDENCE=0.55
+
+# Autonomous mode settings
+AUTONOMOUS_MODE=false
+AUTONOMOUS_INTERVAL_SECONDS=300
+AUTONOMOUS_ALLOW_EXEC=false

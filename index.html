@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpha Agent | Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Inter', sans-serif; }
+        .card { background-color: #1e293b; border: 1px solid #334155; }
+        .scrollbox::-webkit-scrollbar { width: 6px; }
+        .scrollbox::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .chat-bubble-user { background-color: #2563eb; }
+        .chat-bubble-agent { background-color: #334155; }
+    </style>
+</head>
+<body class="p-6">
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-blue-400">Alpha Agent <span class="text-sm font-normal text-gray-500">— Delta Exchange</span> <span id="mode-badge" class="text-xs bg-blue-900 text-blue-200 px-2 py-1 rounded ml-2">TESTNET</span></h1>
+            <div class="flex items-center gap-4">
+                <div id="delta-conn-badge" class="flex items-center gap-2 text-xs px-2 py-1 rounded bg-slate-800 border border-slate-700">
+                    <span id="delta-conn-dot" class="h-2 w-2 rounded-full bg-gray-500"></span>
+                    <span id="delta-conn-label">Checking Delta...</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="relative flex h-3 w-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                    </span>
+                    <span class="text-sm font-medium" id="status-label">Agent Autonomous</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="card p-5 rounded-xl shadow-lg">
+                <p class="text-gray-400 text-xs uppercase font-semibold">Balance</p>
+                <p id="balance" class="text-xl font-mono font-bold">Loading...</p>
+            </div>
+            <div class="card p-5 rounded-xl shadow-lg">
+                <p class="text-gray-400 text-xs uppercase font-semibold">Total PnL</p>
+                <p id="pnl" class="text-xl font-mono font-bold text-green-400">Loading...</p>
+            </div>
+            <div class="card p-5 rounded-xl shadow-lg">
+                <p class="text-gray-400 text-xs uppercase font-semibold">Equity</p>
+                <p id="equity" class="text-xl font-mono font-bold">Loading...</p>
+            </div>
+            <div class="card p-5 rounded-xl shadow-lg">
+                <p class="text-gray-400 text-xs uppercase font-semibold">Trades Today</p>
+                <p id="daily-trades" class="text-xl font-mono font-bold">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Pending trade -->
+        <div id="pending-card" class="card p-5 rounded-xl shadow-lg mb-6 hidden">
+            <h2 class="font-semibold mb-3 text-amber-300">Pending Trade — Needs Confirmation</h2>
+            <div id="pending-details" class="font-mono text-sm text-gray-300 mb-4"></div>
+            <div class="flex gap-3">
+                <button onclick="confirmTrade()" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg text-sm font-semibold">Confirm (testnet)</button>
+                <button onclick="cancelTrade()" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg text-sm font-semibold">Cancel</button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Chat -->
+            <div class="card rounded-xl shadow-lg overflow-hidden flex flex-col h-[520px]">
+                <div class="p-4 border-b border-slate-700">
+                    <h2 class="font-semibold">Chat with the Agent</h2>
+                    <span class="text-xs text-gray-500">Try: "scan", "status", "take BTC long with a 60000 entry, 58500 stop, 63000 target"</span>
+                </div>
+                <div id="chat-log" class="flex-1 overflow-y-auto p-4 space-y-3 scrollbox"></div>
+                <div class="p-3 border-t border-slate-700 flex gap-2">
+                    <input id="chat-input" type="text" placeholder="Message the agent..."
+                        class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+                    <button onclick="sendMessage()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-sm font-semibold">Send</button>
+                </div>
+            </div>
+
+            <!-- Live activity log -->
+            <div class="card rounded-xl shadow-lg overflow-hidden flex flex-col h-[520px]">
+                <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+                    <h2 class="font-semibold">Live Activity Log</h2>
+                    <span class="text-xs text-gray-500">Polling /api/status every 3s</span>
+                </div>
+                <div id="logs" class="flex-1 overflow-y-auto font-mono text-xs scrollbox">
+                    <div class="p-4 text-gray-500 italic text-center">Waiting for activity...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Ideas history -->
+            <div class="card rounded-xl shadow-lg overflow-hidden">
+                <div class="p-4 border-b border-slate-700">
+                    <h2 class="font-semibold">Recent Trade Ideas</h2>
+                </div>
+                <div id="ideas" class="p-0 h-64 overflow-y-auto text-sm scrollbox">
+                    <div class="p-4 text-gray-500 italic text-center">No ideas yet.</div>
+                </div>
+            </div>
+
+            <!-- Journal -->
+            <div class="card rounded-xl shadow-lg overflow-hidden">
+                <div class="p-4 border-b border-slate-700">
+                    <h2 class="font-semibold">Agent Journal</h2>
+                    <span class="text-xs text-gray-500">workspace/notes/agent_journal.md</span>
+                </div>
+                <pre id="journal" class="p-4 h-64 overflow-y-auto text-xs whitespace-pre-wrap scrollbox">Loading...</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function fmtOutcome(o) {
+            const colors = {
+                executed: 'text-green-400', proposed: 'text-blue-300', cancelled: 'text-gray-400',
+                rejected: 'text-red-400', blocked_daily_limit: 'text-amber-400', blocked_low_confidence: 'text-amber-400'
+            };
+            return `<span class="${colors[o] || 'text-gray-300'}">${o}</span>`;
+        }
+
+        function setDeltaBadge(connected, detail) {
+            const dot = document.getElementById('delta-conn-dot');
+            const label = document.getElementById('delta-conn-label');
+            if (connected === true) {
+                dot.className = 'h-2 w-2 rounded-full bg-green-500';
+                label.innerText = 'Delta: Connected';
+                label.title = detail || '';
+            } else if (connected === false) {
+                dot.className = 'h-2 w-2 rounded-full bg-red-500';
+                label.innerText = 'Delta: Not connected';
+                label.title = detail || '';
+            } else {
+                dot.className = 'h-2 w-2 rounded-full bg-gray-500';
+                label.innerText = 'Delta: Unknown';
+                label.title = detail || '';
+            }
+        }
+
+        async function updateDashboard() {
+            try {
+                const response = await fetch('/api/status?t=' + Date.now());
+                const data = await response.json();
+
+                // Balance can legitimately be a non-numeric placeholder
+                // ("Not connected" / "Unavailable") when Delta auth hasn't
+                // succeeded -- only append the currency suffix for values
+                // that actually look like a number.
+                const rawBalance = data.summary.balance ?? '0.00';
+                const isNumeric = /^-?\d+(\.\d+)?$/.test(String(rawBalance).trim());
+                document.getElementById('balance').innerText = isNumeric ? `${rawBalance} USDT` : rawBalance;
+
+                document.getElementById('pnl').innerText = (data.summary.pnl || '0.00') + ' USDT';
+                document.getElementById('equity').innerText = (data.summary.equity || '0.00') + ' USDT';
+                document.getElementById('daily-trades').innerText = data.summary.daily_trades ?? '0';
+                document.getElementById('status-label').innerText = data.status || 'Monitoring';
+                document.getElementById('mode-badge').innerText = (data.mode || 'testnet').toUpperCase();
+                setDeltaBadge(data.delta_connected, data.delta_detail);
+
+                const logContainer = document.getElementById('logs');
+                logContainer.innerHTML = (data.logs || []).map(log => `
+                    <div class="p-3 border-b border-slate-800 hover:bg-slate-800 transition-colors">
+                        <span class="text-gray-500 mr-2">[${log.timestamp}]</span>
+                        <span class="text-blue-300 mr-2">${log.type}</span>
+                        <span>${log.message}</span>
+                    </div>
+                `).reverse().join('') || '<div class="p-4 text-gray-500 italic text-center">No activity logged yet.</div>';
+
+                renderPending(data.pending_trade);
+            } catch (e) {
+                console.error("Error updating dashboard", e);
+            }
+        }
+
+        function renderPending(p) {
+            const card = document.getElementById('pending-card');
+            if (!p) { card.classList.add('hidden'); return; }
+            card.classList.remove('hidden');
+            document.getElementById('pending-details').innerHTML = `
+                ${p.symbol} — ${p.side.toUpperCase()}<br>
+                Entry: ${p.entry || 'TBD'} &nbsp; Stop: ${p.stop_loss || 'TBD'} &nbsp; Target: ${p.take_profit || 'TBD'}<br>
+                Size: ${p.size} &nbsp; Confidence: ${p.confidence}<br>
+                <span class="text-gray-500">${p.rationale}</span>
+            `;
+        }
+
+        async function updateIdeas() {
+            try {
+                const res = await fetch('/api/ideas?t=' + Date.now());
+                const data = await res.json();
+                const list = (data.ideas || []).slice().reverse();
+                document.getElementById('ideas').innerHTML = list.map(i => `
+                    <div class="p-3 border-b border-slate-800">
+                        <div class="flex justify-between">
+                            <span class="font-semibold">${i.symbol} ${i.side.toUpperCase()}</span>
+                            ${fmtOutcome(i.outcome)}
+                        </div>
+                        <div class="text-xs text-gray-500">${i.timestamp} — entry ${i.entry || 'TBD'}, conf ${i.confidence}</div>
+                    </div>
+                `).join('') || '<div class="p-4 text-gray-500 italic text-center">No ideas yet.</div>';
+            } catch (e) { console.error(e); }
+        }
+
+        async function updateJournal() {
+            try {
+                const res = await fetch('/api/journal?t=' + Date.now());
+                const data = await res.json();
+                const el = document.getElementById('journal');
+                el.innerText = data.journal || 'No journal entries yet.';
+                el.scrollTop = el.scrollHeight;
+            } catch (e) { console.error(e); }
+        }
+
+        function appendChat(role, text) {
+            const log = document.getElementById('chat-log');
+            const bubble = document.createElement('div');
+            bubble.className = role === 'user'
+                ? 'chat-bubble-user ml-auto max-w-[85%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap'
+                : 'chat-bubble-agent mr-auto max-w-[85%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap';
+            bubble.innerText = text;
+            log.appendChild(bubble);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+            input.value = '';
+            appendChat('user', message);
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                const data = await res.json();
+                appendChat('agent', data.reply || '(no reply)');
+                renderPending(data.pending_trade);
+                updateDashboard();
+                updateIdeas();
+                updateJournal();
+            } catch (e) {
+                appendChat('agent', 'Error contacting the agent.');
+            }
+        }
+
+        async function confirmTrade() {
+            const res = await fetch('/api/confirm', { method: 'POST' });
+            const data = await res.json();
+            appendChat('agent', data.reply);
+            renderPending(data.pending_trade);
+            updateDashboard(); updateIdeas(); updateJournal();
+        }
+
+        async function cancelTrade() {
+            const res = await fetch('/api/cancel', { method: 'POST' });
+            const data = await res.json();
+            appendChat('agent', data.reply);
+            renderPending(data.pending_trade);
+            updateDashboard(); updateIdeas(); updateJournal();
+        }
+
+        document.getElementById('chat-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        setInterval(updateDashboard, 3000);
+        setInterval(updateIdeas, 5000);
+        setInterval(updateJournal, 5000);
+        updateDashboard();
+        updateIdeas();
+        updateJournal();
+    </script>
+</body>
+</html>

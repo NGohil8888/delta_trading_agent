@@ -1,0 +1,25 @@
+<!--
+  DEPRECATED 2026-07-21
+  -------------------
+  This file is intentionally NOT served. dashboard.py constructs its Flask
+  app with template_folder='.' (the project root) and renders 'index.html'
+  from there, NOT from this templates/ subdirectory. The original file
+  (~173 lines, an older dashboard UI) was kept for a long time as a "just in
+  case" fallback, which is a trap: if someone ever changed dashboard.py to
+  use the default template folder, Flask would happily serve THIS page
+  instead of the real one in /index.html, and the failure would be silent.
+
+  To prevent that, this file is now a tombstone. If you ever see it rendered,
+  someone changed the template_folder and the dashboard is broken. Revert
+  that change.
+
+  To restore a real template, edit /index.html in the project root, not here.
+-->
+<!doctype html>
+<title>DEPRECATED templates/index.html</title>
+<h1>This template is deprecated</h1>
+<p>You are seeing the wrong dashboard. The real UI is at the project root
+   <code>index.html</code>, served by <code>dashboard.py</code> with
+   <code>template_folder='.'</code>. This file in <code>templates/</code>
+   is intentionally not served. See the comment block at the top of this
+   file for the reason.</p>
